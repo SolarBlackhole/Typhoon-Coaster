@@ -1,32 +1,38 @@
 import time
 import threading
 
+estop = False
+simulation = True
+
 def simulate_lift_1train():
+    global simulation
+    global estop
     print("Simulating Lift Hill Coaster with 1 train")
     print("Train 1 will start in the station")
-    blocks = [True, False, False, False]
-    # Station, Lift Hill, Midcourse Brake, Final Brake
+    blocks = [1, 0, 0, 0]
+    block_names = ["Station", "Lift Hill", "Midcourse Brake", "Final Brake"]
     simulation = True
     while(simulation):
-        print("Train 1 is in the station")
-        print("Input 'go' to dispatch the train, or 'exit' to end the simulation")
-        dispatch = input()
-        if dispatch == "go":
-            blocks[0] = False
-            blocks[1] = True
-            print("Train 1 is on the lift hill")
-            time.sleep(5) # Simulating the time it takes for the train to reach the end of the block
-            blocks[1] = False
-            blocks[2] = True
-            print("Train 1 is on the midcourse brake")
-            time.sleep(5)
-            blocks[2] = False
-            blocks[3] = True
-            print("Train 1 is on the final brake")
-            time.sleep(5)
-            blocks[3] = False
-            blocks[0] = True
-            print("Train 1 is back in the station")
+        if not estop:
+            print("Input 'go' to dispatch the train, or 'exit' to end the simulation")
+            print("Incase of an emergency, input 'estop' to stop all trains")
+            dispatch = input()
+        else:
+            print("Input 'reset' to reset the emergency stop, or 'exit' to end the simulation")
+            dispatch = input()
+        if dispatch == "go" and not estop:
+            if blocks[0] == 1:
+                print("Dispatching Train 1")
+                train1 = threading.Thread(target=train_course, args=(1, blocks, 0, block_names))
+                train1.start()
+            else:
+                print('No trains in the station')
+        elif dispatch == "estop":
+            print("Emergency Stop Activated. Train Stopped at Current Block")
+            estop = True
+        elif dispatch == "reset" and estop:
+            print("Resetting Emergency Stop, Train will continue")
+            estop = False
         elif dispatch == "exit":
             simulation = False
         else:
@@ -34,6 +40,8 @@ def simulate_lift_1train():
             pass
         
 def simulate_lift_2trains():
+    global estop
+    global simulation
     print("Simulating Lift Hill Coaster with 2 trains")
     print("Train 1 will start in the station")
     print("Train 2 will start on the final brake")
@@ -43,70 +51,93 @@ def simulate_lift_2trains():
     simulation = True
     current_block_1 = 0
     current_block_2 = 3
+    train1 = threading.Thread()
+    train2 = threading.Thread()
     while(simulation):
-        print("Train 1 is in the station")
-        print("Train 2 is on the final brake")
-        print("Input 'go' to dispatch a train, or 'exit' to end the simulation")
-        dispatch = input()
-        if dispatch == "go":
+        if not estop:
+            print("Input 'go' to dispatch a train, 'enter' to bring in train 2 to the station or 'exit' to end the simulation")
+            print("Incase of an emergency, input 'estop' to stop all trains")
+            dispatch = input()
+        else:
+            print("Input 'reset' to reset the emergency stop, or 'exit' to end the simulation")
+            dispatch = input()
+        if dispatch == "go" and not estop:
             # TODO: Implement a way to dispatch the trains
-            pass
+            if blocks[0] == 1:
+                print("Dispatching Train 1")
+                train1 = threading.Thread(target=train_course, args=(1, blocks, current_block_1, block_names))
+                train1.start()
+            elif blocks[0] == 2:
+                print("Dispatching Train 2")
+                train2 = threading.Thread(target=train_course, args=(2, blocks, current_block_2, block_names))
+                train2.start()
+            else:
+                print('No trains in the station')
+        elif dispatch == "enter" and not estop:
+            if blocks[3] == 2 and blocks[0] == 0:
+                print("Bringing Train 2 to the station")
+                blocks[3] = 0
+                blocks[0] = 2
+                current_block_2 = 0
+            else:
+                print("Train 2 is not in the final brake or there is a train in the station")
+        elif dispatch == "estop":
+            print("Emergency Stop Activated. All Trains Stopped at Current Blocks")
+            estop = True
+        elif dispatch == "reset" and estop:
+            print("Resetting Emergency Stop, Trains will continue")
+            estop = False
+        elif dispatch == "exit":
+            simulation = False
+            train1.join()
+            train2.join()
 
-            
-# def train_1_tracker(blocks):
-#     while(blocks[0] == True):
-#         print("Train 1 is in the station")
-#         time.sleep(1)
-#     while(blocks[1] == True):
-#         print("Train 1 is on the lift hill")
-#         time.sleep(1)
-#     while(blocks[2] == True):
-#         print("Train 1 is on the midcourse brake")
-#         time.sleep(1)
-#     while(blocks[3] == True):
-#         print("Train 1 is on the final brake")
-#         time.sleep(1)
+# Cycle the train through the course until it reaches the station
 
-# def train_2_tracker(blocks):
-#     while(blocks[0] == 2):
-#         print("Train 2 is in the station")
-#         time.sleep(1)
-#     while(blocks[1] == 2):
-#         print("Train 2 is on the lift hill")
-#         time.sleep(1)
-#     while(blocks[2] == 2):
-#         print("Train 2 is on the midcourse brake")
-#         time.sleep(1)
-#     while(blocks[3] == 2):
-#         print("Train 2 is on the final brake")
-#         time.sleep(1)
+def train_course(train_num, blocks, current_block, block_names):
+    global estop
+    global simulation
+    while True:
+        if estop:
+            print(f"Train {train_num} is stopped at {block_names[current_block]}")
+            time.sleep(10)
+            continue
 
-def advance_train_1(blocks, current_block, block_names):
+        dispatched, current_block = advance_train(train_num, blocks, current_block, block_names)
+        time.sleep(5)
+        while current_block != 0:
+            if estop:
+                print(f"Train {train_num} is stopped at {block_names[current_block]}")
+                time.sleep(10)
+                continue
+            if not simulation:
+                break
+            # print(f"Train {train_num}: {block_names[current_block]}")
+            dispatched, current_block = advance_train(train_num, blocks, current_block, block_names)
+            if dispatched:
+                time.sleep(5)
+                # dispatched, current_block = advance_train(train_num, blocks, current_block, block_names)
+            else:
+                print(f"Train {train_num} is waiting in {block_names[current_block]}")
+                # print(f"Train {train_num}: Current Blocks: {blocks}")
+                time.sleep(5)
+        if current_block == 0:
+            break
+
+# Move the train to the next block if it is not occupied
+
+def advance_train(train_num, blocks, current_block, block_names):
     next_block = (current_block + 1) % 4
-    if next_block_occupied(blocks, current_block) == False:
-        print("Train 1: " + block_names[current_block] + " -> " + block_names[next_block])
-        blocks[current_block] = False
-        blocks[next_block] = True
+    if not next_block_occuppied(blocks, next_block) or (current_block == 3 and blocks[0] == 0):
+        print(f"Train {train_num}: {block_names[current_block]} -> {block_names[next_block]}")
+        blocks[current_block] = 0
+        blocks[next_block] = train_num
         return True, next_block
     else:
-        print("Train 1: " + block_names[current_block] + " -> " + block_names[current_block] + " (Waiting)")
+        print(f"Train {train_num}: {block_names[current_block]} -> {block_names[current_block]} (Waiting)")
         return False, current_block
     
-def advance_train_2(blocks, current_block, block_names):
-    next_block = (current_block + 1) % 4
-    if next_block_occupied == False:
-        print("Train 2: " + block_names[current_block] + " -> " + block_names[next_block])
-        blocks[current_block] = False
-        blocks[next_block] = 2
-        return True, next_block
-    else:
-        print("Train 2: " + block_names[current_block] + " -> " + block_names[current_block] + " (Waiting)")
-        return False, current_block
-    
-    
-def next_block_occupied(blocks, current_block):
-    next_block = (current_block + 1) % 4
-    if blocks[next_block] == True or blocks[next_block] == 2:
-        return True
-    else:
-        return False
+# Check if the next block is occupied
+
+def next_block_occuppied(blocks, next_block):
+    return blocks[next_block] != 0
