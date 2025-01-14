@@ -1,4 +1,5 @@
 from lift_hill import simulate_lift_1train, simulate_lift_2trains
+from launch_coaster import simulate_launch_1train, simulate_launch_2trains
 
 # Lift Hill Block Zones: Station, Lift Hill, Midcourse Brake, Final Brake 
 # Launch Block Zones: Station, Launch, Midcourse Brake, Final Brake
@@ -31,10 +32,10 @@ def launch_coaster():
     selection = input()
     if selection == "1":
         print("1 Train Selected")
-        pass
+        simulate_launch_1train()
     elif selection == "2":
         print("2 Trains Selected")
-        pass
+        simulate_launch_2trains()
     else:
         print("Invalid Selection")
         pass
