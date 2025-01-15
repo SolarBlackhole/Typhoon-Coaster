@@ -1,12 +1,15 @@
 import time
 import threading
+import chain_lift
 
 estop = False
 simulation = True
+fault = False
 
 def simulate_lift_1train():
     global simulation
     global estop
+    global fault
     print("Simulating Lift Hill Coaster with 1 train")
     print("Train 1 will start in the station")
     blocks = [1, 0, 0, 0]
@@ -16,24 +19,27 @@ def simulate_lift_1train():
         if not estop:
             print("Input 'go' to dispatch the train, or 'exit' to end the simulation")
             print("Incase of an emergency, input 'estop' to stop all trains")
-            dispatch = input()
-        else:
+            command = input()
+        elif estop and not fault:
             print("Input 'reset' to reset the emergency stop, or 'exit' to end the simulation")
-            dispatch = input()
-        if dispatch == "go" and not estop:
+            command = input()
+        elif fault:
+            print("Input 'repair' to repair the chain lift, or 'exit' to end the simulation")
+            command = input()
+        if command == "go" and not estop:
             if blocks[0] == 1:
                 print("Dispatching Train 1")
                 train1 = threading.Thread(target=train_course, args=(1, blocks, 0, block_names))
                 train1.start()
             else:
                 print('No trains in the station')
-        elif dispatch == "estop":
+        elif command == "estop":
             print("Emergency Stop Activated. Train Stopped at Current Block")
             estop = True
-        elif dispatch == "reset" and estop:
+        elif command == "reset" and estop:
             print("Resetting Emergency Stop, Train will continue")
             estop = False
-        elif dispatch == "exit":
+        elif command == "exit":
             simulation = False
         else:
             print("Invalid Input")
@@ -42,6 +48,7 @@ def simulate_lift_1train():
 def simulate_lift_2trains():
     global estop
     global simulation
+    global fault
     print("Simulating Lift Hill Coaster with 2 trains")
     print("Train 1 will start in the station")
     print("Train 2 will start on the final brake")
@@ -54,15 +61,17 @@ def simulate_lift_2trains():
     train1 = threading.Thread()
     train2 = threading.Thread()
     while(simulation):
-        if not estop:
+        if not estop and not fault:
             print("Input 'go' to dispatch a train, 'enter' to bring in train 2 to the station or 'exit' to end the simulation")
             print("Incase of an emergency, input 'estop' to stop all trains")
             dispatch = input()
-        else:
+        elif estop and not fault:
             print("Input 'reset' to reset the emergency stop, or 'exit' to end the simulation")
             dispatch = input()
+        elif fault:
+            print("Input 'repair' to repair the chain lift, or 'exit' to end the simulation")
+            dispatch = input()
         if dispatch == "go" and not estop:
-            # TODO: Implement a way to dispatch the trains
             if blocks[0] == 1:
                 print("Dispatching Train 1")
                 train1 = threading.Thread(target=train_course, args=(1, blocks, current_block_1, block_names))
@@ -97,6 +106,7 @@ def simulate_lift_2trains():
 def train_course(train_num, blocks, current_block, block_names):
     global estop
     global simulation
+    global fault
     while True:
         if estop:
             print(f"Train {train_num} is stopped at {block_names[current_block]}")
@@ -104,7 +114,24 @@ def train_course(train_num, blocks, current_block, block_names):
             continue
 
         dispatched, current_block = advance_train(train_num, blocks, current_block, block_names)
+        if dispatched:
+            chain_lift.start_chain_lift(train_num)
+            if not chain_lift.chain_lift:
+                fault = True
+            time.sleep(2.5)
+            if next_block_occuppied(blocks, current_block):
+                print("Slowing down lift hill")
+                chain_lift.set_chain_lift_speed(5)
+        else:
+            print(f"Train {train_num}: Failed to dispatch.")
         time.sleep(5)
+
+        if fault:
+            print("Fault: Chain Lift is broken")
+            print(f"Train {train_num} is stopped at {block_names[current_block]}")
+            time.sleep(10)
+            continue
+
         while current_block != 0:
             if estop:
                 print(f"Train {train_num} is stopped at {block_names[current_block]}")
